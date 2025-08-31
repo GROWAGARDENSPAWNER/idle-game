@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Idle Clicker</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121a33;
+      --panel-2: #0f1630;
+      --text: #ecf2ff;
+      --muted: #a9b4d0;
+      --accent: #7aa2ff;
+      --accent-2: #8be9c7;
+      --good: #79f6a8;
+      --warn: #ffc857;
+      --danger: #ff6b6b;
+      --shadow: rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+      background: radial-gradient(1200px 1200px at 10% -10%, #172042 0%, #0b1020 40%) fixed; color: var(--text);
+    }
+    .app { max-width: 1100px; margin: 24px auto; padding: 16px; }
+    header {
+      display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; margin-bottom: 16px;
+    }
+    .title { font-weight: 800; letter-spacing: .5px; font-size: clamp(20px, 3vw, 28px); }
+    .stats {
+      display: grid; gap: 8px; grid-auto-flow: column; align-items: center;
+    }
+    .pill {
+      background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+      padding: 10px 14px; border-radius: 999px; box-shadow: 0 6px 18px var(--shadow);
+      font-size: 14px; color: var(--muted);
+    }
+    .pill strong { color: var(--text); }
+
+    .grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 16px; }
+    @media (max-width: 900px){ .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.00));
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: var(--radius);
+      padding: 16px; box-shadow: 0 10px 24px var(--shadow);
+    }
+    .card h2 { margin: 0 0 12px 0; font-size: 18px; color: var(--text); letter-spacing: .4px; }
+    .muted { color: var(--muted); font-size: 14px; }
+
+    .click-wrap { display: grid; place-items: center; padding: 24px; }
+    .click-btn {
+      width: min(76vw, 360px); aspect-ratio: 1/1; border-radius: 50%; border: none; cursor: pointer;
+      background: radial-gradient(100% 100% at 50% 30%, var(--accent) 0%, #425eea 60%, #3046b6 100%);
+      box-shadow: 0 16px 44px rgba(67, 109, 255, .35), inset 0 6px 12px rgba(255,255,255,.3);
+      color: white; font-weight: 900; font-size: clamp(18px, 3.3vw, 28px); letter-spacing: .6px;
+      transition: transform .06s ease, filter .15s ease;
+    }
+    .click-btn:active { transform: scale(.97) translateY(1px); filter: brightness(1.05); }
+    .subtext { margin-top: 10px; color: var(--muted); }
+
+    .row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      background: linear-gradient(180deg, #1b2750, #0e1636);
+      border: 1px solid rgba(255,255,255,.08);
+      color: var(--text); padding: 10px 12px; border-radius: 12px; cursor: pointer; font-weight: 700;
+      box-shadow: 0 8px 18px var(--shadow); font-size: 14px;
+    }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn.buy { background: linear-gradient(180deg, #1b5031, #0e3623); }
+    .btn.prestige { background: linear-gradient(180deg, #5b2870, #3a1b47); }
+
+    .store { display: grid; gap: 10px; }
+    .store-item { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); }
+    .store-item h3 { margin: 0 0 6px 0; font-size: 16px; }
+
+    .right-col { display: grid; gap: 16px; }
+
+    .achv-list { display: grid; gap: 8px; }
+    .achv { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); border-radius: 12px; padding: 10px; font-size: 14px; display: grid; grid-template-columns: 1fr auto; align-items: center; }
+    .achv.locked { opacity: .6; }
+
+    .toast {
+      position: fixed; right: 16px; bottom: 16px; max-width: 340px;
+      background: #0e162f; border: 1px solid rgba(255,255,255,.1); color: var(--text);
+      padding: 12px 14px; border-radius: 12px; box-shadow: 0 10px 22px var(--shadow);
+      display: none; z-index: 9999;
+    }
+
+    .footer { margin-top: 16px; color: var(--muted); font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="title">⚡ Idle Clicker</div>
+      <div class="stats">
+        <div class="pill">Coins: <strong id="coins">0</strong></div>
+        <div class="pill">Per Click: <strong id="perClick">1</strong></div>
+        <div class="pill">Per Second: <strong id="perSecond">0</strong></div>
+        <div class="pill">Gems ✨: <strong id="gems">0</strong></div>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Generator</h2>
+        <div class="click-wrap">
+          <button id="clickBtn" class="click-btn">TAP FOR COINS</button>
+          <div class="subtext" id="tip">Tip: Upgrades multiply with Gems.</div>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <div class="row">
+            <h2>Upgrades</h2>
+            <div class="controls">
+              <button class="btn" data-qty="1">x1</button>
+              <button class="btn" data-qty="10">x10</button>
+              <button class="btn" data-qty="max">Max</button>
+            </div>
+          </div>
+          <div class="store" id="store"></div>
+        </div>
+      </div>
+
+      <div class="right-col">
+        <div class="card">
+          <div class="row">
+            <h2>Prestige</h2>
+            <button id="prestigeBtn" class="btn prestige">Ascend for Gems</button>
+          </div>
+          <div class="muted">Convert huge coin totals into <strong>Gems</strong> for a permanent production multiplier. You won't lose Gems on reset.</div>
+          <div class="muted" style="margin-top:6px">Next Ascend yields: <strong id="prestigePreview">0</strong> Gems</div>
+        </div>
+
+        <div class="card">
+          <div class="row">
+            <h2>Achievements</h2>
+            <button id="claimAll" class="btn">Claim All</button>
+          </div>
+          <div id="achievements" class="achv-list"></div>
+        </div>
+
+        <div class="card">
+          <div class="row">
+            <h2>Settings</h2>
+            <div class="controls">
+              <button id="saveBtn" class="btn">Save</button>
+              <button id="resetBtn" class="btn" title="Wipes your progress">Hard Reset</button>
+            </div>
+          </div>
+          <div class="muted">Saves automatically every 30s & when you buy. Offline progress included.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">Made with ❤ — single-file, no images, mobile friendly.</div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  // ===== Utilities =====
+  const fmt = (n) => {
+    if (!isFinite(n)) return '∞';
+    if (n < 1000) return Math.floor(n).toLocaleString();
+    const units = ['K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc'];
+    let u = -1; let x = n;
+    while (x >= 1000 && u < units.length-1){ x/=1000; u++; }
+    return x.toFixed(2).replace(/\.00$/,'') + (units[u] ? units[u] : 'e'+Math.floor(Math.log10(n)));
+  };
+  const showToast = (msg) => {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.style.display='block';
+    clearTimeout(showToast._id);
+    showToast._id = setTimeout(()=> t.style.display='none', 2200);
+  }
+
+  // ===== Game Data =====
+  const defaultState = () => ({
+    coins: 0,
+    totalCoins: 0,
+    gems: 0,
+    perClickBase: 1,
+    items: {
+      clickPower: { name: 'Click Power', desc: '+1 per click (multiplied by Gems)', base: 25, amount: 0, type: 'click', inc: 1, scale: 1.15 },
+      cursor:     { name: 'Auto Clicker', desc: '+0.2 coins/sec each', base: 50, amount: 0, type: 'cps', inc: 0.2, scale: 1.15 },
+      miner:      { name: 'Miner', desc: '+2 coins/sec each', base: 400, amount: 0, type: 'cps', inc: 2, scale: 1.17 },
+      factory:    { name: 'Factory', desc: '+12 coins/sec each', base: 2600, amount: 0, type: 'cps', inc: 12, scale: 1.18 },
+      lab:        { name: 'Lab', desc: '+80 coins/sec each', base: 18000, amount: 0, type: 'cps', inc: 80, scale: 1.20 },
+    },
+    achv: {},
+    lastSave: Date.now(),
+  });
+
+  let state = load() || defaultState();
+  let buyQty = 1;
+
+  function gemMultiplier(){
+    return 1 + state.gems * 0.15; // +15% per gem
+  }
+
+  function perClick(){
+    return (state.perClickBase + state.items.clickPower.amount * state.items.clickPower.inc) * gemMultiplier();
+  }
+
+  function perSecond(){
+    let cps = 0;
+    for (const k of Object.keys(state.items)){
+      const it = state.items[k];
+      if (it.type === 'cps') cps += it.amount * it.inc;
+    }
+    return cps * gemMultiplier();
+  }
+
+  function itemCost(key, extra=0){
+    const it = state.items[key];
+    const n = it.amount + extra;
+    return Math.floor(it.base * Math.pow(it.scale, n));
+  }
+
+  function canBuy(key, qty){
+    let total = 0;
+    for (let i=0;i<qty;i++) total += itemCost(key, i);
+    return state.coins >= total;
+  }
+
+  function buy(key, qty){
+    let total = 0; for (let i=0;i<qty;i++) total += itemCost(key, i);
+    if (state.coins < total) return false;
+    state.coins -= total; state.items[key].amount += qty;
+    autoSave();
+    showToast(`Bought ${qty} × ${state.items[key].name} for ${fmt(total)} coins`);
+    render();
+    return true;
+  }
+
+  function buyMax(key){
+    let qty = 0; let cost = 0;
+    while (true){
+      const c = itemCost(key, qty);
+      if (cost + c > state.coins) break;
+      cost += c; qty++;
+    }
+    if (qty>0){ state.coins -= cost; state.items[key].amount += qty; showToast(`Bought ${qty} × ${state.items[key].name}`); autoSave(); }
+    render();
+  }
+
+  function clickOnce(){
+    const gain = perClick();
+    state.coins += gain; state.totalCoins += gain; render();
+  }
+
+  // ===== Prestige =====
+  function prestigeGemsFor(total){
+    // square root style: gems = floor( sqrt(total / 1e6) )
+    return Math.floor(Math.sqrt(total / 1e6));
+  }
+
+  function doPrestige(){
+    const g = prestigeGemsFor(state.totalCoins);
+    if (g <= state.gems){
+      showToast('You need to surpass your best to gain more Gems.');
+      return;
+    }
+    if (!confirm(`Ascend for ${g} Gems? This resets coins & upgrades but keeps Gems.`)) return;
+    const keepGems = g;
+    state = defaultState();
+    state.gems = keepGems;
+    showToast(`Ascended! You now have ${keepGems} Gems ✨`);
+    autoSave(true);
+    render();
+  }
+
+  // ===== Achievements =====
+  const ACHVS = [
+    { id: 'c1', name: 'First Click', cond: s=> s.totalCoins >= 1, reward: 50 },
+    { id: 'c2', name: 'Hundred Up', cond: s=> s.totalCoins >= 100, reward: 200 },
+    { id: 'u1', name: 'Upgrade Buyer', cond: s=> s.items.cursor.amount >= 1, reward: 150 },
+    { id: 't1', name: 'Thousandaire', cond: s=> s.totalCoins >= 1_000, reward: 500 },
+    { id: 't2', name: 'Millionaire', cond: s=> s.totalCoins >= 1_000_000, reward: 2_500 },
+  ];
+
+  function checkAchievements(){
+    let gained = 0;
+    for (const a of ACHVS){
+      if (!state.achv[a.id] && a.cond(state)){
+        state.achv[a.id] = true; state.coins += a.reward; gained += a.reward;
+      }
+    }
+    if (gained>0){ showToast(`Achievements claimed: +${fmt(gained)} coins`); autoSave(); }
+  }
+
+  // ===== Save / Load / Offline =====
+  function save(){
+    state.lastSave = Date.now();
+    localStorage.setItem('idleClickerSave', JSON.stringify(state));
+  }
+  function autoSave(immediate){
+    if (immediate) return save();
+    clearTimeout(autoSave._id);
+    autoSave._id = setTimeout(save, 800);
+  }
+  function load(){
+    try {
+      const raw = localStorage.getItem('idleClickerSave');
+      if (!raw) return null; const s = JSON.parse(raw);
+      // Offline progress
+      const dt = Math.max(0, Date.now() - (s.lastSave||Date.now()))/1000;
+      const offlineGain = perSecondFrom(s) * Math.min(3600*8, dt); // cap 8h
+      s.coins += offlineGain; s.totalCoins += offlineGain;
+      return s;
+    } catch(e){ console.warn('Load failed', e); return null; }
+  }
+  function perSecondFrom(s){
+    let cps = 0;
+    for (const k of Object.keys(s.items)){
+      const it = s.items[k]; if (it.type==='cps') cps += it.amount * it.inc;
+    }
+    return cps * (1 + (s.gems||0) * 0.15);
+  }
+
+  // ===== UI =====
+  const els = {
+    coins: document.getElementById('coins'),
+    perClick: document.getElementById('perClick'),
+    perSecond: document.getElementById('perSecond'),
+    gems: document.getElementById('gems'),
+    store: document.getElementById('store'),
+    clickBtn: document.getElementById('clickBtn'),
+    prestigeBtn: document.getElementById('prestigeBtn'),
+    prestigePreview: document.getElementById('prestigePreview'),
+    claimAll: document.getElementById('claimAll'),
+    achievements: document.getElementById('achievements'),
+  };
+
+  function renderStore(){
+    els.store.innerHTML = '';
+    for (const [key, it] of Object.entries(state.items)){
+      const wrap = document.createElement('div');
+      wrap.className = 'store-item';
+      const left = document.createElement('div');
+      const right = document.createElement('div');
+
+      const title = document.createElement('h3');
+      title.textContent = `${it.name} ${it.amount>0?`(x${it.amount})`:''}`;
+      const desc = document.createElement('div');
+      desc.className = 'muted'; desc.textContent = it.desc;
+      left.appendChild(title); left.appendChild(desc);
+
+      const costNow = itemCost(key);
+      const btnBuy = document.createElement('button');
+      const qty = buyQty === 'max' ? 'Max' : buyQty;
+      btnBuy.textContent = `Buy ${qty} — ${fmt(totalCostFor(key, buyQty))}`;
+      btnBuy.className = 'btn buy';
+      btnBuy.disabled = !canBuyFor(key, buyQty);
+      btnBuy.onclick = () => {
+        if (buyQty === 'max') buyMax(key);
+        else buy(key, Number(buyQty));
+      };
+
+      right.appendChild(btnBuy);
+
+      wrap.appendChild(left); wrap.appendChild(right);
+      els.store.appendChild(wrap);
+    }
+  }
+
+  function totalCostFor(key, qty){
+    if (qty === 'max') return itemCost(key); // display minimal starting cost
+    let total = 0; for (let i=0;i<qty;i++) total += itemCost(key, i); return total;
+  }
+  function canBuyFor(key, qty){
+    if (qty === 'max') return state.coins >= itemCost(key);
+    return canBuy(key, Number(qty));
+  }
+
+  function renderAchv(){
+    els.achievements.innerHTML = '';
+    for (const a of ACHVS){
+      const got = !!state.achv[a.id];
+      const div = document.createElement('div'); div.className = 'achv'+(got?'':' locked');
+      const left = document.createElement('div'); left.innerHTML = `<strong>${a.name}</strong><div class="muted">Reward: ${fmt(a.reward)} coins</div>`;
+      const right = document.createElement('div'); right.textContent = got ? '✔' : '—';
+      div.appendChild(left); div.appendChild(right);
+      els.achievements.appendChild(div);
+    }
+  }
+
+  function render(){
+    els.coins.textContent = fmt(state.coins);
+    els.perClick.textContent = fmt(perClick());
+    els.perSecond.textContent = fmt(perSecond());
+    els.gems.textContent = fmt(state.gems);
+    els.prestigePreview.textContent = fmt(prestigeGemsFor(state.totalCoins));
+    renderStore();
+    renderAchv();
+  }
+
+  // ===== Events =====
+  document.querySelectorAll('[data-qty]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      buyQty = b.dataset.qty;
+      document.querySelectorAll('[data-qty]').forEach(x=> x.disabled=false);
+      b.disabled = true; renderStore();
+    });
+  });
+  document.querySelector('[data-qty="1"]').disabled = true;
+
+  els.clickBtn.addEventListener('click', ()=>{ clickOnce(); checkAchievements(); });
+  els.prestigeBtn.addEventListener('click', doPrestige);
+  els.claimAll.addEventListener('click', ()=>{ checkAchievements(); render(); });
+
+  document.getElementById('saveBtn').addEventListener('click', ()=>{ save(); showToast('Saved ✓'); });
+  document.getElementById('resetBtn').addEventListener('click', ()=>{
+    if (confirm('Hard reset? This will erase all progress (including Gems).')){
+      localStorage.removeItem('idleClickerSave');
+      state = defaultState(); render(); showToast('Progress wiped');
+    }
+  });
+
+  // ===== Game Loop =====
+  let last = performance.now();
+  function loop(ts){
+    const dt = (ts - last)/1000; last = ts;
+    const gain = perSecond() * dt;
+    state.coins += gain; state.totalCoins += gain;
+    renderLite();
+    requestAnimationFrame(loop);
+  }
+  function renderLite(){
+    // cheap HUD only (store is re-drawn on actions)
+    els.coins.textContent = fmt(state.coins);
+    els.perSecond.textContent = fmt(perSecond());
+  }
+
+  // Auto-save interval
+  setInterval(save, 30000);
+
+  // ===== Init =====
+  render();
+  requestAnimationFrame(loop);
+  showToast('Welcome back! Offline gains included.');
+  </script>
+</body>
+</html>
